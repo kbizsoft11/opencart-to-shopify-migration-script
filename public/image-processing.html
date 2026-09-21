@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Processing - OpenCart to Shopify</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .log-line { animation: slideIn 0.2s ease-out; }
+        @keyframes slideIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
+        .log-success { color: #10b981; }
+        .log-error { color: #ef4444; }
+        .log-warning { color: #f59e0b; }
+        .log-info { color: #6b7280; }
+        .progress-bar { transition: width 0.3s ease; }
+        #console { font-family: 'Courier New', monospace; }
+        .tab-active { background-color: #0284c7; color: white; }
+        .tab-inactive { background-color: #f1f5f9; color: #64748b; }
+        .card { transition: all 0.2s ease; }
+        .card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <div class="min-h-screen p-6">
+        <!-- Header -->
+        <div class="max-w-7xl mx-auto mb-8">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-3xl font-bold text-gray-900 mb-2">
+                        <i class="fas fa-images text-blue-600"></i> Image Processing Center
+                    </h1>
+                    <p class="text-gray-600">Process oversized images for Shopify compliance (25MP, 20MB limits)</p>
+                </div>
+                <div class="flex space-x-3">
+                    <a href="index.html" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">
+                        <i class="fas fa-arrow-left"></i> Back to Migration
+                    </a>
+                    <button onclick="app.refreshPage()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                        <i class="fas fa-refresh"></i> Refresh
+                    </button>
+                </div>
+            </div>
+        </div>
+        <!-- Tab Navigation -->
+        <div class="max-w-7xl mx-auto mb-6">
+            <div class="flex space-x-1 bg-gray-200 p-1 rounded-lg">
+                <button onclick="app.switchTab('overview')" id="tab-overview" class="px-4 py-2 rounded-md font-medium tab-active">
+                    <i class="fas fa-chart-line"></i> Overview
+                </button>
+                <button onclick="app.switchTab('process')" id="tab-process" class="px-4 py-2 rounded-md font-medium tab-inactive">
+                    <i class="fas fa-cogs"></i> Process Images
+                </button>
+                <button onclick="app.switchTab('validate')" id="tab-validate" class="px-4 py-2 rounded-md font-medium tab-inactive">
+                    <i class="fas fa-check-double"></i> Validate & Review
+                </button>
+                <button onclick="app.switchTab('manage')" id="tab-manage" class="px-4 py-2 rounded-md font-medium tab-inactive">
+                    <i class="fas fa-database"></i> Manage Mappings
+                </button>
+            </div>
+        </div>
+
+        <!-- Tab Content Container -->
+        <div class="max-w-7xl mx-auto space-y-6">
+
+            <!-- Overview Tab -->
+            <div id="content-overview" class="tab-content">
+                <!-- Shopify Limits Info -->
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6">
+                    <h2 class="text-xl font-semibold mb-4 text-blue-800">
+                        <i class="fas fa-info-circle"></i> Shopify Image Requirements
+                    </h2>
+                    <div class="grid grid-cols-2 gap-6">
+                        <div>
+                            <h3 class="font-medium text-blue-700 mb-2">Maximum File Size</h3>
+                            <p class="text-2xl font-bold text-blue-600">20 MB</p>
+                            <p class="text-sm text-blue-600">Per image file</p>
+                        </div>
+                        <div>
+                            <h3 class="font-medium text-blue-700 mb-2">Maximum Resolution</h3>
+                            <p class="text-2xl font-bold text-blue-600">25 MP</p>
+                            <p class="text-sm text-blue-600">≈ 5000 x 5000 pixels</p>
+                        </div>
+                    </div>
+                </div>
+                <!-- Status Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+                    <div class="card bg-white rounded-lg shadow-md p-6">
+                        <div class="flex items-center">
+                            <div class="p-3 rounded-full bg-blue-100 mr-4">
+                                <i class="fas fa-database text-blue-600"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-600">Database Status</p>
+                                <p class="text-xl font-bold" id="dbStatus">Unknown</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card bg-white rounded-lg shadow-md p-6">
+                        <div class="flex items-center">
+                            <div class="p-3 rounded-full bg-green-100 mr-4">
+                                <i class="fas fa-file-csv text-green-600"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-600">Image Mappings</p>
+                                <p class="text-xl font-bold" id="mappingCount">0</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card bg-white rounded-lg shadow-md p-6">
+                        <div class="flex items-center">
+                            <div class="p-3 rounded-full bg-yellow-100 mr-4">
+                                <i class="fas fa-clock text-yellow-600"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-600">Last Processing</p>
+                                <p class="text-sm font-medium" id="lastProcessing">Never</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card bg-white rounded-lg shadow-md p-6">
+                        <div class="flex items-center">
+                            <div class="p-3 rounded-full bg-purple-100 mr-4">
+                                <i class="fas fa-chart-bar text-purple-600"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-600">Validation Score</p>
+                                <p class="text-xl font-bold" id="validationScore">N/A</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Quick Actions -->
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h2 class="text-xl font-semibold mb-4 text-gray-800">
+                        <i class="fas fa-bolt text-yellow-500"></i> Quick Actions
+                    </h2>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <button onclick="app.quickStart()" class="p-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                            <i class="fas fa-play text-xl mb-2"></i>
+                            <div class="font-medium">Quick Start</div>
+                            <div class="text-sm opacity-75">Process 50 products</div>
+                        </button>
+                        <button onclick="app.checkStatus()" class="p-4 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+                            <i class="fas fa-refresh text-xl mb-2"></i>
+                            <div class="font-medium">Check Status</div>
+                            <div class="text-sm opacity-75">Refresh all data</div>
+                        </button>
+                        <button onclick="app.downloadReport()" class="p-4 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
+                            <i class="fas fa-download text-xl mb-2"></i>
+                            <div class="font-medium">Download CSV</div>
+                            <div class="text-sm opacity-75">Get mapping file</div>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Process Images Tab -->
+            <div id="content-process" class="tab-content" style="display: none;">
+                <!-- Configuration Section -->
+                <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                    <h2 class="text-xl font-semibold mb-4 text-gray-800">
+                        <i class="fas fa-cog text-gray-500"></i> Processing Configuration
+                    </h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Product Limit</label>
+                            <input type="number" id="processLimit" class="w-full px-4 py-2 border rounded-lg" value="100" min="0">
+                            <p class="text-xs text-gray-500 mt-1">0 = all products</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Specific Product ID</label>
+                            <input type="number" id="processProductId" class="w-full px-4 py-2 border rounded-lg" placeholder="Optional">
+                            <p class="text-xs text-gray-500 mt-1">Leave empty to process multiple</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Product Selection Options -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                        <div>
+                            <label class="block text-sm font-medium mb-2 text-blue-900">
+                                <i class="fas fa-filter text-blue-600"></i> Product Status Filter
+                            </label>
+                            <select id="productStatusFilter" class="w-full px-4 py-2 border border-blue-300 rounded-lg bg-white">
+                                <option value="all">🔵 All Products (1207)</option>
+                                <option value="active" selected>✅ Active Only (1145)</option>
+                                <option value="inactive">⛔ Inactive Only (62)</option>
+                            </select>
+                            <p class="text-xs text-blue-700 mt-1">Active: status=1, Inactive: status=0</p>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium mb-2 text-blue-900">
+                                <i class="fas fa-history text-blue-600"></i> Processing Mode
+                            </label>
+                            <select id="processingMode" class="w-full px-4 py-2 border border-blue-300 rounded-lg bg-white">
+                                <option value="resume" selected>📋 Resume Mode (skip already processed)</option>
+                                <option value="fresh">🔄 Fresh Start (delete CSV and restart)</option>
+                            </select>
+                            <p class="text-xs text-blue-700 mt-1">Choose how to process products</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Processing Mode Info -->
+                    <div id="modeInfoBox" class="mb-4 p-3 rounded-lg bg-green-50 border border-green-200">
+                        <h4 class="font-medium text-green-900 mb-2">📋 Resume Mode</h4>
+                        <ul class="text-xs text-green-800 space-y-1">
+                            <li>✓ Skips images already in CSV (by Original_Image_URL)</li>
+                            <li>✓ Appends new rows to end of CSV</li>
+                            <li>✓ Fastest option - continues from last position</li>
+                            <li>✓ Safe - won't re-process existing images</li>
+                        </ul>
+                    </div>
+
+                    <!-- Standard Options -->
+                    <div class="mt-4 space-y-2">
+                        <label class="flex items-center">
+                            <input type="checkbox" id="resumeProcessing" class="mr-2" checked style="display: none;">
+                            <span class="text-sm font-medium" style="display: none;">Skip already processed images (Resume Mode)</span>
+                        </label>
+                        <p class="text-xs text-gray-500" style="display: none;">Automatically skips images that already exist in CSV</p>
+                    </div>
+                </div>
+                <!-- Image Host Configuration -->
+                <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                    <h2 class="text-xl font-semibold mb-4 text-gray-800">
+                        <i class="fas fa-cloud text-blue-500"></i> Image Hosting Configuration
+                    </h2>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-sm font-medium mb-2">OpenCart Image Base URL</label>
+                            <input type="url" id="openCartImageUrl" class="w-full px-3 py-2 border rounded" 
+                                   placeholder="https://yourstore.com/image">
+                            <p class="text-xs text-gray-600 mt-1">Base URL for OpenCart images</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-2">ImgBB API Key (from .env)</label>
+                            <input type="text" id="imgbbKey" class="w-full px-3 py-2 border rounded" 
+                                   placeholder="Will use IMGBB_API_KEY from .env" disabled>
+                            <p class="text-xs text-gray-600 mt-1">Set IMGBB_API_KEY in your .env file</p>
+                        </div>
+                    </div>
+                    <div class="mt-4 p-3 bg-blue-50 rounded-lg">
+                        <h4 class="font-medium text-blue-800 mb-2">Processing Behavior</h4>
+                        <ul class="text-sm text-blue-700 space-y-1">
+                            <li>• Images exceeding 25MP or 20MB will be automatically resized</li>
+                            <li>• Quality optimized for Shopify (85% JPEG, PNG compression 6)</li>
+                            <li>• Processed images uploaded to ImgBB with your API key</li>
+                            <li>• CSV generated with original → processed URL mappings</li>
+                        </ul>
+                    </div>
+                </div>
+                <!-- Start Processing Section -->
+                <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-xl font-semibold text-gray-800">
+                            <i class="fas fa-play-circle text-green-500"></i> Start Processing
+                        </h2>
+                        <div class="flex space-x-3">
+                            <button onclick="app.startProcessing()" id="startProcessBtn" 
+                                    class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium">
+                                <i class="fas fa-play"></i> Start Processing
+                            </button>
+                            <button onclick="app.stopProcessing()" id="stopProcessBtn" 
+                                    class="px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium" style="display: none;">
+                                <i class="fas fa-stop"></i> Stop Processing
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Processing Progress -->
+                    <div id="processingProgress" style="display: none;">
+                        <div class="mb-4">
+                            <div class="flex justify-between text-sm mb-2">
+                                <span id="processProgressText">0 / 0 products</span>
+                                <span id="processProgressPercent">0%</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-4">
+                                <div id="processProgressBar" class="progress-bar bg-blue-600 h-4 rounded-full" style="width: 0%"></div>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                            <div class="bg-gray-50 p-3 rounded">
+                                <div class="text-2xl font-bold text-gray-900" id="processStatTotal">0</div>
+                                <div class="text-sm text-gray-600">Images Found</div>
+                            </div>
+                            <div class="bg-red-50 p-3 rounded">
+                                <div class="text-2xl font-bold text-red-600" id="processStatOversized">0</div>
+                                <div class="text-sm text-gray-600">Oversized</div>
+                            </div>
+                            <div class="bg-blue-50 p-3 rounded">
+                                <div class="text-2xl font-bold text-blue-600" id="processStatProcessed">0</div>
+                                <div class="text-sm text-gray-600">Processed</div>
+                            </div>
+                            <div class="bg-green-50 p-3 rounded">
+                                <div class="text-2xl font-bold text-green-600" id="processStatUploaded">0</div>
+                                <div class="text-sm text-gray-600">Uploaded</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Live Console -->
+                <div id="processConsoleSection" class="bg-gray-900 rounded-lg shadow-md p-6" style="display: none;">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-semibold text-white">
+                            <i class="fas fa-terminal text-green-400"></i> Processing Console
+                        </h2>
+                        <div class="flex space-x-2">
+                            <button onclick="app.pauseConsole()" id="pauseConsoleBtn" class="px-3 py-1 bg-yellow-600 text-white rounded hover:bg-yellow-700 text-sm">
+                                <i class="fas fa-pause"></i> Pause
+                            </button>
+                            <button onclick="app.clearConsole('process')" class="px-3 py-1 bg-gray-700 text-white rounded hover:bg-gray-600 text-sm">
+                                <i class="fas fa-trash"></i> Clear
+                            </button>
+                        </div>
+                    </div>
+                    <div id="processConsole" class="bg-black rounded p-4 h-96 overflow-y-auto text-sm text-gray-300"></div>
+                </div>
+            </div>
+
+            <!-- Validate & Review Tab -->
+            <div id="content-validate" class="tab-content" style="display: none;">
+                <!-- Validation Controls -->
+                <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                    <h2 class="text-xl font-semibold mb-4 text-gray-800">
+                        <i class="fas fa-check-double text-green-500"></i> Image Validation
+                    </h2>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Sample Size</label>
+                            <select id="validationSampleSize" class="w-full px-4 py-2 border rounded-lg">
+                                <option value="20">20 images (Quick)</option>
+                                <option value="50">50 images (Standard)</option>
+                                <option value="100">100 images (Thorough)</option>
+                                <option value="0">All images (Complete)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Validation Type</label>
+                            <select id="validationType" class="w-full px-4 py-2 border rounded-lg">
+                                <option value="basic">Basic (Size & Accessibility)</option>
+                                <option value="detailed">Detailed (Full Analysis)</option>
+                                <option value="shopify">Shopify Compliance</option>
+                            </select>
+                        </div>
+                        <div class="flex items-end">
+                            <button onclick="app.validateImages()" class="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+                                <i class="fas fa-play"></i> Start Validation
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Validation Results -->
+                    <div id="validationResults" class="mt-6" style="display: none;">
+                        <div class="border-t pt-6">
+                            <h3 class="text-lg font-medium mb-4">Validation Results</h3>
+                            <div class="grid grid-cols-2 md:grid-cols-5 gap-4 text-center">
+                                <div class="bg-green-50 p-4 rounded-lg">
+                                    <div class="text-3xl font-bold text-green-600" id="validResultValid">0</div>
+                                    <div class="text-sm text-gray-600">Valid Images</div>
+                                </div>
+                                <div class="bg-red-50 p-4 rounded-lg">
+                                    <div class="text-3xl font-bold text-red-600" id="validResultInvalid">0</div>
+                                    <div class="text-sm text-gray-600">Invalid</div>
+                                </div>
+                                <div class="bg-yellow-50 p-4 rounded-lg">
+                                    <div class="text-3xl font-bold text-yellow-600" id="validResultUnreachable">0</div>
+                                    <div class="text-sm text-gray-600">Unreachable</div>
+                                </div>
+                                <div class="bg-blue-50 p-4 rounded-lg">
+                                    <div class="text-3xl font-bold text-blue-600" id="validResultOversized">0</div>
+                                    <div class="text-sm text-gray-600">Oversized</div>
+                                </div>
+                                <div class="bg-purple-50 p-4 rounded-lg">
+                                    <div class="text-3xl font-bold text-purple-600" id="validResultScore">0%</div>
+                                    <div class="text-sm text-gray-600">Success Rate</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Image Analysis -->
+                <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                    <h2 class="text-xl font-semibold mb-4 text-gray-800">
+                        <i class="fas fa-chart-pie text-blue-500"></i> Image Analysis
+                    </h2>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <!-- Size Distribution Chart Placeholder -->
+                        <div class="bg-gray-50 rounded-lg p-4 h-64 flex items-center justify-center">
+                            <div class="text-center text-gray-500">
+                                <i class="fas fa-chart-bar text-4xl mb-2"></i>
+                                <p>Size Distribution Chart</p>
+                                <p class="text-sm">(Placeholder for future chart)</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Processing Statistics -->
+                        <div class="space-y-4">
+                            <div class="bg-gray-50 rounded-lg p-4">
+                                <h4 class="font-medium text-gray-700 mb-2">Processing Statistics</h4>
+                                <div class="space-y-2 text-sm">
+                                    <div class="flex justify-between">
+                                        <span>Total Images Processed:</span>
+                                        <span class="font-medium" id="statTotalProcessed">-</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span>Average Processing Time:</span>
+                                        <span class="font-medium" id="statAvgTime">-</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span>Compression Ratio:</span>
+                                        <span class="font-medium" id="statCompression">-</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span>Storage Saved:</span>
+                                        <span class="font-medium" id="statStorageSaved">-</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="bg-gray-50 rounded-lg p-4">
+                                <h4 class="font-medium text-gray-700 mb-2">Common Issues</h4>
+                                <div id="commonIssues" class="space-y-1 text-sm text-gray-600">
+                                    <p>• Run validation to see common issues</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Processing Log -->
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-semibold text-gray-800">
+                            <i class="fas fa-history text-gray-500"></i> Recent Processing Activity
+                        </h2>
+                        <button onclick="app.refreshProcessingLog()" class="px-3 py-1 bg-gray-600 text-white rounded hover:bg-gray-700 text-sm">
+                            <i class="fas fa-refresh"></i> Refresh
+                        </button>
+                    </div>
+                    <div id="processingLog" class="bg-gray-50 rounded p-4 h-48 overflow-y-auto text-sm">
+                        <p class="text-gray-600">No recent activity</p>
+                    </div>
+                </div>
+            </div>
+            <!-- Manage Mappings Tab -->
+            <div id="content-manage" class="tab-content" style="display: none;">
+                <!-- Mapping File Management -->
+                <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                    <h2 class="text-xl font-semibold mb-4 text-gray-800">
+                        <i class="fas fa-database text-blue-500"></i> Mapping File Management
+                    </h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <h3 class="font-medium text-gray-700 mb-3">Current Mapping File</h3>
+                            <div id="currentMappingInfo" class="bg-gray-50 rounded-lg p-4">
+                                <div class="space-y-2 text-sm">
+                                    <div class="flex justify-between">
+                                        <span>File Size:</span>
+                                        <span class="font-medium" id="mappingFileSize">-</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span>Total Mappings:</span>
+                                        <span class="font-medium" id="mappingTotalCount">-</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span>Last Updated:</span>
+                                        <span class="font-medium" id="mappingLastUpdate">-</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mt-4 space-y-2">
+                                <button onclick="app.downloadMapping()" class="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                                    <i class="fas fa-download"></i> Download CSV
+                                </button>
+                                <button onclick="app.previewMapping()" class="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+                                    <i class="fas fa-eye"></i> Preview Mappings
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <h3 class="font-medium text-gray-700 mb-3">Management Actions</h3>
+                            <div class="space-y-3">
+                                <button onclick="app.backupMapping()" class="w-full px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700">
+                                    <i class="fas fa-save"></i> Create Backup
+                                </button>
+                                <button onclick="app.clearMapping()" class="w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">
+                                    <i class="fas fa-trash"></i> Clear All Mappings
+                                </button>
+                                <div class="border-t pt-3">
+                                    <label class="block text-sm font-medium mb-2">Import CSV File</label>
+                                    <input type="file" id="importCsvFile" accept=".csv" class="w-full px-3 py-2 border rounded-lg mb-2">
+                                    <button onclick="app.importMapping()" class="w-full px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">
+                                        <i class="fas fa-upload"></i> Import Mappings
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Mapping Preview Table -->
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-semibold text-gray-800">
+                            <i class="fas fa-table text-gray-500"></i> Mapping Preview
+                        </h2>
+                        <div class="flex space-x-2">
+                            <select id="mappingPageSize" class="px-3 py-1 border rounded" onchange="app.updateMappingView()">
+                                <option value="10">10 rows</option>
+                                <option value="25">25 rows</option>
+                                <option value="50" selected>50 rows</option>
+                                <option value="100">100 rows</option>
+                            </select>
+                            <button onclick="app.refreshMappingPreview()" class="px-3 py-1 bg-gray-600 text-white rounded hover:bg-gray-700">
+                                <i class="fas fa-refresh"></i>
+                            </button>nded hover:bg-gray-700">
+                                <i class="fas fa-refresh"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div id="mappingPreviewContainer" class="overflow-x-auto">
+                        <div class="text-center text-gray-500 py-8">
+                            <i class="fas fa-table text-4xl mb-2"></i>
+                            <p>Click "Preview Mappings" to view current mappings</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script src="image-processing-app.js"></script>
+</body>
+</html>
