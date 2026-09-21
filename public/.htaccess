@@ -1,0 +1,27 @@
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /
+
+    # Don't rewrite if the request is for an actual file
+    RewriteCond %{REQUEST_FILENAME} -f
+    RewriteRule ^ - [L]
+
+    # Don't rewrite if the request is for a directory
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+
+    # For API requests, route to index.php
+    RewriteCond %{REQUEST_URI} ^/api/
+    RewriteRule ^(.*)$ index.php [L,QSA]
+
+    # For everything else that's not a real file/dir, route to index.html (for single-page app)
+    RewriteRule ^ index.html [L,QSA]
+</IfModule>
+
+<IfModule !mod_rewrite.c>
+    # Fallback if mod_rewrite is not available
+    # Direct access to PHP files and directories
+    <FilesMatch "\.php$">
+        Allow from all
+    </FilesMatch>
+</IfModule>
