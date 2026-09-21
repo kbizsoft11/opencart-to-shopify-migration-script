@@ -1,0 +1,43 @@
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Logs and runtime output
+*.log
+logs/
+log/
+out/
+output/
+reports/
+data/process/*
+
+# Image mapping files and generated image artifacts
+image_mapping/
+**/image_mapping/
+**/image-mapping/
+*.csv
+
+# Markdown docs and project scripts
+# Keep the main project documentation tracked
+!README.md
+!README*.md
+!LICENSE
+!CHANGELOG*
+# *.md
+# *.bat
+# *.ps1
+
+# Local IDE / OS junk
+.DS_Store
+Thumbs.db
+
+
+# All txt files except for the main README and LICENSE
+*.txt
+
+# All docx files except for the main README and LICENSE
+branch_structure.json
+temp_auto_push.bat
+temp_interactive_push.bat
+.gitignore
